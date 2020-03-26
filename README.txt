@@ -9,5 +9,12 @@ because I have learned coding in C++ for less than 4 months.
 Credits to my Electronic Professor @ Thomas More De Nayer for teaching me:
 Mr. Wyns, Pedro
 
+More documentation on Blynk:
+www.docs.blynk.cc
+
+More examples with help on Blynk:
+www.examples.blynk.cc
+
+
 If you have any questions regarding this project, hit me!
 kokojuice2@icloud.com
