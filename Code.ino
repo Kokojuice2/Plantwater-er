@@ -2,6 +2,11 @@
  * Info can be found on:  
  * http://docs.blynk.cc/
  * 
+ * Mr. Pedro Wyns' Blynk Server is running on: 
+ * server.wyns.it, poort 9443 in Blynk app
+ * 
+ * Server.wyns.it, poort 8081 in program
+ * 
  * Used material:
  * 
  * - Micro-controller ---> ESP32 
@@ -10,7 +15,22 @@
  * - Water Sensor is attached to D32
  * - LED with 100 Ohm resistor attached to D33
  * 
- * - 0,96 inch OLED screen
+ * Get I2C code with Scanner: 
+ *    https://github.com/RobTillaart/Arduino/blob/master/sketches/MultiSpeedI2CScanner/MultiSpeedI2CScanner.ino
+ *    Handy for checkup @ setup
+ *    
+ *    if I2C code 0x... not working --> error
+ *
+ *
+ * 
+ * - BMP280 Temperature and Pressure Sensor    on I2C
+ *    GND --> GND
+ *    VCC --> 3v3
+ *    SCL --> D22
+ *    SDA --> D21
+ * 
+ * 
+ * - 0,96 inch OLED screen    on I2C
  *    GND --> GND
  *    VCC --> 3v3
  *    SCL --> D22
@@ -25,8 +45,7 @@
  *    Int4 --> pin ...
  * 
  * 
- * Created by Joachim Pham,      Belgian
- * Licensed under "GNU General Public License v3.0"
+ * 
  * 
  */
  
@@ -35,6 +54,14 @@ int sensor = 0;
 const int led = 33;
 const int water = 32;
 const int ldr = 35;
+
+
+//----------- BMP280 Temp and Pressure Sensor ----------------
+
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BMP280.h>
+
+Adafruit_BMP280 bme;        // I2C
 
 
 //----------Stepper motor with SBT0811 ------------
@@ -71,44 +98,67 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 #include <BlynkSimpleEsp32.h>
 
 
-char auth[] = " ................................";                            // Enter your Auth Code from your project in the app
-char ssid[] = ".............";                                                // Enter your wifi name
-char pass[] = ".............";                                                // Enter your wifi password
+char auth[] = " ........................................";                               // Authentication Code from Blynk app project
+char ssid[] = "................";                                                        // Wifi Name 
+char pass[] = "................";                                                        // Wifi Password
 
 
 //-------- Blynk App Button Function --------------
-BLYNK_WRITE(V3){                                                              // Make a button on the app, choose pin(V3)
-  boolean ledstatus = param.asInt();                                          //boolean returns 0 or 1
-  Serial.print("V3 led value is: ");
+BLYNK_WRITE(V5){                                // Make a button on the app, choose pin(V3)
+  boolean ledstatus = param.asInt();            //boolean returns 0 or 1
+  Serial.print("V5 led value is: ");
   Serial.println(ledstatus); 
 
 
-if (ledstatus == 1){
-  digitalWrite(led, HIGH);                                                    // if 1, led on
-} else {
-  digitalWrite(led, LOW);                                                     // if 0, led off
+  if (ledstatus == 1){
+    digitalWrite(led, HIGH);                      // if 1, led on
+  }else {
+    digitalWrite(led, LOW);                       // if 0, led off
+  }
 }
+
+
+BLYNK_WRITE(V6){                                              // Manually control the motor for opening and closing the watering valve
+  boolean motor = param.asInt();
+  Serial.println("V6 motor is: ");
+  Serial.println(motor);
+
+  if (motor == 1){
+    valve();
+  }else{
+    valve();
+  }
 }
 
 void setup(){
-Serial.begin(115200);                                                         // Communication started with 115200 baud, for motor
+Serial.begin(115200);     // Communication started with 115200 baud  (for motor)
 
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
     Serial.println(F("SSD1306 allocation failed"));
     for(;;);
   }
-  delay(2000);
-  display.clearDisplay(); 
 
-  display.setTextSize(1);                                                     // Get your OLED awake @ setup, say something
+Serial.println(F("BMP280 test"));
+ 
+  if (!bme.begin(0x76)) {                       // Zoek de  I2C code met scanner
+    Serial.println("Could not find a valid BMP280 sensor, check wiring!");
+    while (1);
+  }
+
+
+  delay(2000);
+  display.clearDisplay();
+
+  display.setTextSize(1);
   display.setTextColor(WHITE);
   display.setCursor(0, 10);
   // Display static text
   display.println("Water sensor active!");
-  display.println("Light sensor active!");
+  display.println("LDR sensor active!");
+  display.println("BMP280 sensor active!");
   display.display(); 
 
-pinMode(water, INPUT);                                                        // Declare pins in- or output
+pinMode(water, INPUT);
 pinMode(led, OUTPUT);
 pinMode(ldr, INPUT);
 
@@ -119,13 +169,16 @@ pinMode(IN4, OUTPUT);
 
 
 
-Blynk.begin(auth, ssid, pass, "server.wyns.it", 8081);                        // Private Blynk Server
+Blynk.begin(auth, ssid, pass, "server.wyns.it", 8081);
 
 // Blynk.begin(auth, ssid, pass);
 
 // Specify server:
 // Blynk.begin(auth, ssid, pass, "blynk-cloud.com", 80);
 // Blynk.begin(auth, ssid, pass, IPAddress(192,168,1,100), 8080);
+
+
+
 
 }
 
@@ -134,34 +187,79 @@ void loop(){
 
 Blynk.run();
 
+//--------------- Temperature Read ---------------
 
-int sensor=analogRead(water);                                                 // Get value of water sensor
-Serial.print("Water : ");
-Serial.println(sensor);   
+int celcius=bme.readTemperature();                                     // Reading BMP280 temperature
+Serial.print("Temperature : ");
+Serial.println(celcius);
+Serial.println(" *C");
 
-display.clearDisplay();                                                       // Print value sensor on OLED
+Blynk.virtualWrite(V4, celcius);                              // Set value celcius to Blynk app V4
+
+display.clearDisplay();
 
 display.setTextSize(1);
 display.setTextColor(WHITE);
 display.setCursor(0, 10);
 
 display.print("Detected ");
-display.print(sensor); 
-display.print(" water.");
+display.print(celcius);
+display.print(" Degrees");
+display.display();
+delay(1000);
+
+//----------- Pressure Read -------------------
+
+int pressure=(bme.readPressure()/100);                                     // Reading BMP280 temperature
+Serial.print("Local air pressure : ");
+Serial.println(pressure);
+Serial.println(" hPa");
+
+Blynk.virtualWrite(V3, pressure);                                          // Set Temperature value on Blynk app V3
+
+display.clearDisplay();
+
+display.setTextSize(1);
+display.setTextColor(WHITE);
+display.setCursor(0, 10);
+
+display.print("Detected ");
+display.print(pressure);
+display.print(" hPa");
 display.display();
 delay(1000);
 
 
+//--------------- Water sensor Read -----------------
 
-int light = analogRead(ldr);                                                 // Get value of light sensor
+int sensor=analogRead(water);                                     // Reading water sensor
+Serial.print("Water : ");
+Serial.println(sensor);   //Wrote serial port
+
+Blynk.virtualWrite(V1, sensor);                                    // Set values in Blynk App on V1
+
+display.clearDisplay();
+
+display.setTextSize(1);
+display.setTextColor(WHITE);
+display.setCursor(0, 10);
+
+display.print("Detected ");
+display.print(sensor);
+display.print(" water.");
+display.display();
+delay(1000);
+
+//---------------- Light Sensor Read --------------------------
+
+int light = analogRead(ldr);                                        // Reading Light intensity
 Serial.println("Light intensity : ");
 Serial.println(light);
 
-Blynk.virtualWrite(V2, light);                                               // Set values in App on V2
-Blynk.virtualWrite(V1, sensor);                                              // Set values in App on V1
+Blynk.virtualWrite(V2, light);                                      // Set values in Blynk App on V2            URL: docs.blynk.cc
 
 
-display.clearDisplay();                                                      // Print value light on OLED
+display.clearDisplay();
 
 display.setTextSize(1);
 display.setTextColor(WHITE);
@@ -173,23 +271,36 @@ display.print(" light.");
 display.display();
 delay(1000);
 
-//----------- Stepper Motor Loop ---------------
 
-while(steps_left>0){                                // Code for Stepper motor, withoout external library
-currentMillis = micros();                           // This code in the loop, gets the motor to open en close the valve for 1 second
-if(currentMillis-last_time>=1000){
-stepper(1);                                         //Couldn't get it working for longer time, based on direct light on the plants, during the day
-_time = _time+micros()-last_time;
-last_time=micros();
-steps_left--;
+if((light == 0) && (sensor == 0)){                                  // If there's no light nor water, turn on valve ones and turn led on
+  digitalWrite(led, HIGH);
+  boolean needwater = true;
+} else {
+  digitalWrite(led, LOW);
+  boolean needwater = false;
+}
+
+
+}
+
+
+//----------- Stepper Motor Functions ---------------
+
+void valve(){                                                                           // URL:  https://www.instructables.com/id/BYJ48-Stepper-Motor/
+    while(steps_left>0){
+    currentMillis = micros();
+    if(currentMillis-last_time>=1000){
+    stepper(1);
+    _time = _time+micros()-last_time;
+    last_time=micros();
+    steps_left--;
       }
-   }
-Serial.println(_time);
-Serial.println("Wait....!");
-delay(2000);
-Direction=!Direction;
-steps_left=4095;
-
+    }
+    Serial.println(_time);
+    Serial.println("Wait....!");
+    delay(1000);
+    Direction=!Direction;
+    steps_left=4095;
 }
 
 void stepper(int xw){
