@@ -2,6 +2,11 @@ Dear user,
 
 Thank you for downloading and using this program, it's my first real contribution to this forum.
 
+If you want the results in pictures: 
+  download Plantwater-er.docx
+  
+  
+
 I'm very happy to get something working, 
 because I have learned coding in C++ for less than 4 months.
 
