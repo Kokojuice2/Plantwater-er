@@ -25,7 +25,8 @@
  *    Int4 --> pin ...
  * 
  * 
- * 
+ * Created by Joachim Pham,      Belgian
+ * Licensed under "GNU General Public License v3.0"
  * 
  */
  
