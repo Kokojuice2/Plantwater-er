@@ -2,10 +2,6 @@
  * Info can be found on:  
  * http://docs.blynk.cc/
  * 
- * Mr. Pedro Wyns' Blynk Server is running on: 
- * server.wyns.it, poort 9443 in Blynk app
- * 
- * Server.wyns.it, poort 8081 in program
  * 
  * Used material:
  * 
